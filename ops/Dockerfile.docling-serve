@@ -1,0 +1,5 @@
+# Start from the base image defined in the Docker image
+FROM ghcr.io/docling-project/docling-serve-cu124 as docling-serve
+
+RUN apt update && \
+    apt install -y curl vim tzdata

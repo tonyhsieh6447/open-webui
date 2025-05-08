@@ -1,0 +1,5 @@
+# Use an existing image as a base
+FROM pgvector/pgvector:pg17
+
+RUN apt update && \
+    apt install -y curl vim tzdata

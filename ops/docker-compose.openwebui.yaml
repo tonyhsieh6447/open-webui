@@ -1,0 +1,133 @@
+services:
+  nginx:
+    build:
+      context: ./nginx-vod-rtmp-module-docker
+      dockerfile: Dockerfile.local
+      # dockerfile: Dockerfile.remote
+    container_name: nginx_vod_rtmp
+    image: nginx_vod_rtmp:0.1
+    volumes:
+      - /mnt/videos:/mnt/videos
+    ports:
+      - "80:80"
+      # - "443:443"
+      - "1935:1935"
+    env_file:
+      - envs/.nginx.env
+  redis:
+    image: redis:latest
+    container_name: redis
+    volumes:
+       - /mnt/redis:/data
+    environment:
+      - TZ=Asia/Taipei
+    ports:
+      - "6379:6379"
+  postgres_pgvector:
+    build:
+      dockerfile: Dockerfile.postgres_pgvector
+    container_name: postgres_pgvector
+    volumes:
+      - /mnt/data/pgdb:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    # set shared memory limit when using docker-compose
+    shm_size: 1g
+    environment:
+      - POSTGRES_USER=postgres
+      # POSTGRES_PASSWORD is the password for PostgreSQL. It should be a strong, unique password to secure your database. Replace "18{AZawe{;g$E7[9" with your own password.
+      - POSTGRES_PASSWORD=LTE7x6YB6AhXboW6
+      # PGDATA is the location of the data directory for PostgreSQL. It should typically be left as it is unless you have a specific reason to change it.
+      - PGDATA=/var/lib/postgresql/data
+      # POSTGRES_HOST_AUTH_METHOD controls who can connect to your database. Setting it to "trust" means that anyone can connect without providing a password, which is not secure. You should set this to "md5" or "password" if you have enabled SSL for PostgreSQL and want more security.
+      - POSTGRES_HOST_AUTH_METHOD=trust
+      - TZ=Asia/Taipei
+  ollama:
+    build:
+      dockerfile: Dockerfile.ollama
+    container_name: ollama
+    volumes:
+      - /mnt/ollama:/root/.ollama
+    ports:
+      - "11434:11434"
+    # set shared memory limit when using docker-compose
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_KEEP_ALIVE=-1
+      - OLLAMA_FLASH_ATTENTION=1
+      - OLLAMA_API_KEY=0AerpT9xmfUjP6SZ22GVlaLn1aYvcjkxPxG8D31CVhIDmjZatodEEYXAgJqw9W3n
+      - TZ=Asia/Taipei
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+  docling-serve:
+    build:
+      dockerfile: Dockerfile.docling-serve
+    container_name: docling-serve
+    volumes:
+      - /mnt/docling-serve/artifacts:/mnt/docling-serve/artifacts
+      - /mnt/docling-serve/static:/mnt/docling-serve/static
+      - /mnt/docling-serve/scratch:/mnt/docling-serve/scratch
+    ports:
+      - "5001:5001"
+    # set shared memory limit when using docker-compose
+    env_file:
+      - envs/.openwebui.env
+    environment:
+      - DOCLING_SERVE_ARTIFACTS_PATH=/mnt/docling-serve/artifacts
+      - DOCLING_SERVE_STATIC_PATH=/mnt/docling-serve/static
+      - DOCLING_SERVE_SCRATCH_PATH=/mnt/docling-serve/scratch
+      - DOCLING_SERVE_ENABLE_UI=true
+      - TZ=Asia/Taipei
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            count: all # nvidia-smi
+            capabilities: [gpu]
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.49.1-noble # Version must match requirements.txt
+    container_name: playwright
+    command: npx -y playwright@1.49.1 run-server --port 5003 --host 0.0.0.0
+    environment:
+      - TZ=Asia/Taipei
+  open-webui:
+    build:
+      context: ../
+      args:
+        OLLAMA_BASE_URL: '/ollama'
+      dockerfile: Dockerfile
+    image: ghcr.io/open-webui/open-webui:${WEBUI_DOCKER_TAG-main}
+    container_name: open-webui
+    volumes:
+      - /mnt/open-webui:/app/backend/data
+    depends_on:
+      - nginx
+      - redis
+      - postgres_pgvector
+      - ollama
+      - docling-serve
+      - playwright
+    ports:
+      - ${OPEN_WEBUI_PORT-3000}:8080
+    env_file:
+      - envs/.openwebui.env
+    environment:
+      - 'OLLAMA_BASE_URL=http://ollama:11434'
+      - 'WEBUI_SECRET_KEY=d70be78f35b6dda4d41e911571a87dd699fa6e4244d472f4498e039cb5785ac5'
+      - TZ=Asia/Taipei
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

@@ -1,0 +1,5 @@
+# Start from the base image defined in the Docker image
+FROM fishaudio/fish-speech as fishaudio
+
+RUN apt update && \
+    apt install -y curl vim tzdata

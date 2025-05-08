@@ -1,0 +1,19 @@
+services:
+  fish-speech:
+    build:
+      dockerfile: Dockerfile.fishspeech
+    container_name: fish-speech
+    volumes:
+      - /mnt/fishspeech:/exp
+    ports:
+      - "7860:7860"
+    # set shared memory limit when using docker-compose
+    environment:
+      - TZ=Asia/Taipei
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

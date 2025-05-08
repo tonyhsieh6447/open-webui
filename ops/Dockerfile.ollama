@@ -1,0 +1,5 @@
+# Start from the base image defined in the Docker image
+FROM ollama/ollama as ollama
+
+RUN apt update && \
+    apt install -y curl vim tzdata
