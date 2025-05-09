@@ -308,4 +308,5 @@ cypress/videos
 cypress/screenshots
 .vscode/settings.json
 
-ops/envs/
+ops/envs/.nginx.env
+ops/envs/.openwebui.env
